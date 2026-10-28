@@ -1,0 +1,46 @@
+.workspace {
+  display: grid;
+  grid-template-columns: var(--sidebar-w) minmax(0, 1fr);
+  height: calc(100dvh - var(--header-h));
+}
+
+.sidebar {
+  background: var(--surface);
+  border-right: 1px solid var(--line);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+}
+
+.output {
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  scroll-padding-top: 120px;
+}
+
+.output-inner {
+  max-width: 1120px;
+  margin: 0 auto;
+  padding: 0 32px 48px;
+}
+
+/* tablets and phones: one column, the whole page scrolls, header stays on top */
+@media (max-width: 1023px) {
+  .workspace {
+    grid-template-columns: minmax(0, 1fr);
+    height: auto;
+  }
+
+  .sidebar {
+    border-right: 0;
+    border-bottom: 1px solid var(--line);
+    overflow: visible;
+  }
+
+  .output {
+    overflow: visible;
+  }
+
+  .output-inner {
+    padding: 0 max(16px, env(safe-area-inset-right, 0px)) 40px max(16px, env(safe-area-inset-left, 0px));
+  }
+}

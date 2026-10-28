@@ -1,0 +1,19 @@
+# developer-only
+frontend/node_modules/
+__pycache__/
+*.pyc
+.claude/
+
+# made on each PC, never shared
+.installed
+.installed_requirements
+releases/
+test_output/
+output/
+Listing_Output/
+templates/old/
+
+# Excel lock files while a sheet is open
+~$*
+
+# NOTE: frontend/dist/ IS committed on purpose - the office laptop has no Node.js to build it.

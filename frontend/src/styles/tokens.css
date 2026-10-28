@@ -1,0 +1,61 @@
+/*
+  Layout: sticky top bar; below it a fixed-height workspace with a left "new run" column
+  and a right output column that scroll on their own. White, single light theme.
+*/
+:root {
+  color-scheme: light;
+
+  /* neutrals, slightly cool to sit with the teal accent */
+  --bg: #f4f6f8;
+  --surface: #ffffff;
+  --surface-2: #f8fafb;
+  --ink: #131a24;
+  --ink-2: #3a4553;
+  --muted: #677283;
+  --line: #e2e6eb;
+  --line-strong: #c9d0d8;
+
+  /* accent */
+  --accent: #0f5d73;
+  --accent-hover: #0b4a5c;
+  --accent-soft: #e7f2f5;
+  --accent-ring: rgba(15, 93, 115, 0.28);
+
+  /* states */
+  --ok: #157347;
+  --ok-soft: #eaf7ef;
+  --ok-line: #b6e0c6;
+  --warn: #9a5b00;
+  --warn-soft: #fff6e5;
+  --warn-line: #f0d39b;
+  --bad: #b42318;
+  --bad-soft: #fdf1f0;
+  --bad-line: #f3c3bd;
+
+  /* marketplaces */
+  --meesho: #9f2089;
+  --flipkart: #2874f0;
+  --myntra: #e8315f;
+  --amazon: #e47911;
+  --master: #52606f;
+
+  /* type */
+  --font-sans: 'IBM Plex Sans', 'Segoe UI', system-ui, -apple-system, Arial, sans-serif;
+  --font-mono: 'IBM Plex Mono', Consolas, 'Courier New', monospace;
+  --text-xs: 12px;
+  --text-sm: 13px;
+  --text-md: 14px;
+  --text-lg: 16px;
+  --text-xl: 20px;
+  --text-2xl: 24px;
+
+  /* shape */
+  --radius-sm: 5px;
+  --radius-md: 8px;
+  --radius-lg: 10px;
+  --shadow-sm: 0 1px 2px rgba(19, 26, 36, 0.05);
+  --shadow-md: 0 8px 24px rgba(19, 26, 36, 0.1), 0 2px 6px rgba(19, 26, 36, 0.05);
+
+  --header-h: 60px;
+  --sidebar-w: 360px;
+}

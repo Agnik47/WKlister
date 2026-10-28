@@ -1,0 +1,10 @@
+# Windows batch files must keep CRLF line endings or cmd.exe misreads them
+*.bat text eol=crlf
+*.ps1 text eol=crlf
+
+# Excel files and fonts are binary
+*.xlsx binary
+*.xlsm binary
+*.xls binary
+*.woff binary
+*.woff2 binary

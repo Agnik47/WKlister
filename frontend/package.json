@@ -1,0 +1,21 @@
+{
+  "name": "wishkaro-listing-tool-ui",
+  "private": true,
+  "version": "1.0.0",
+  "type": "module",
+  "description": "Web interface for the Wish Karo listing tool. Built files in dist/ are served by app.py.",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "watch": "vite build --watch",
+    "preview": "vite preview"
+  },
+  "devDependencies": {
+    "vite": "^6.3.5"
+  },
+  "dependencies": {
+    "@fontsource/ibm-plex-mono": "^5.1.1",
+    "@fontsource/ibm-plex-sans": "^5.1.1",
+    "lucide": "^0.469.0"
+  }
+}
