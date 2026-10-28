@@ -1,220 +1,344 @@
-# Wish Karo – Multi-Platform Listing Tool
+<div align="center">
 
-The listing team fills in **one master sheet**. The tool turns it into upload files for
-**Meesho, Flipkart, Myntra and Amazon**. Each output is the marketplace's **own template**,
-filled in, with its dropdowns, hidden sheets and formatting left as they were.
+# Wish Karo Listing Tool
 
+**One master sheet in. Ready-to-upload files for Meesho, Flipkart, Myntra and Amazon out.**
+
+![Python](https://img.shields.io/badge/Python-3.10%2B-3776AB?logo=python&logoColor=white)
+![Flask](https://img.shields.io/badge/Server-Flask-000000?logo=flask&logoColor=white)
+![Vite](https://img.shields.io/badge/Page-Vite-646CFF?logo=vite&logoColor=white)
+![Windows](https://img.shields.io/badge/Runs%20on-Windows-0078D6?logo=windows&logoColor=white)
+![Category](https://img.shields.io/badge/Category-Kids%20dresses-0f5d73)
+
+</div>
+
+![The tool after a run: files for each marketplace, a summary and the issues list](docs/screenshot-results.png)
+
+The listing team fills in **one Excel master sheet**. The tool checks it, corrects common typing
+mistakes, and fills each marketplace's **own upload template**, keeping their dropdowns, hidden
+sheets and formatting exactly as the marketplace shipped them. A report lists anything to fix
+before uploading.
+
+It runs on one office laptop, costs nothing to run, needs no database and no AI.
+
+---
+
+## Contents
+
+- [What it does](#what-it-does)
+- [Daily use](#daily-use)
+- [Setting up a laptop (one time)](#setting-up-a-laptop-one-time)
+- [How updates reach the laptop](#how-updates-reach-the-laptop)
+- [The master sheet](#the-master-sheet)
+- [Marketplace rules](#marketplace-rules)
+- [For the developer](#for-the-developer)
+- [Common changes](#common-changes)
+- [Troubleshooting](#troubleshooting)
+- [Accuracy](#accuracy)
+- [Known limits](#known-limits)
+
+---
+
+## What it does
+
+```mermaid
+flowchart LR
+    A["Master sheet<br/>Products · Sizes · Settings"] --> B["Check and<br/>auto-correct"]
+    B --> M["Meesho .xlsx"]
+    B --> F["Flipkart .xls"]
+    B --> Y["Myntra .xlsx"]
+    B --> Z["Amazon .xlsm"]
+    B --> R["Listing report .xlsx"]
 ```
-Wishkaro_Master_Listing.xlsx  ──►  python generate.py  ──►  Meesho_*.xlsx
-   (filled by listing team)                                Flipkart_*.xls
-                                                           Myntra_*.xlsx
-                                                           Amazon_*.xlsm
-                                                           Listing_Report_*.xlsx
-```
 
-## Website (recommended way to use it)
-
-On ONE office PC (Windows):
-1. Install Python 3.10+ (tick "Add python.exe to PATH") and LibreOffice (free, for the Flipkart file).
-2. Double-click `start_website.bat`. First run installs everything (about 1 minute), then the browser opens.
-3. Keep the black window open. It prints two links:
-   - `http://localhost:5050` on that PC
-   - `http://<PC-IP>:5050` for anyone on the same office Wi-Fi
-
-The listing person opens the link, drops the filled master sheet, clicks **Generate**, and gets a zip
-with the 4 platform files + report. Nothing is stored; files are deleted after 2 hours. No database, no cost.
-
-**Auto-fixes before generating** (each one is listed under "Auto-fixed for you"):
-double spaces, stray spaces in codes/links, prices typed as "Rs. 749", sizes typed as "6 - 7 years",
-dropdown values in wrong capitals, the same product typed on several rows, secondary colour same as primary,
-shoulder copied from length, impossible Meesho kids weight, "Wishkaro" in Meesho text (Meesho brand is Silver Kraft).
-
-## Daily use (without the website)
-
-1. Listing person fills `Wishkaro_Master_Listing.xlsx`:
-   - **Products**: one row per colour.
-   - **Sizes**: one row per size.
-   - **Settings**: filled once.
-2. Run the generator. You can either:
-   - drag the filled file onto `generate_listings.bat` (Windows), or
-   - run `python generate.py "path\to\filled_master.xlsx"`.
-3. Open `Listing_Report_*.xlsx`. Fix every **ERROR** in the master and run again. Look at each **CHECK**.
-4. Upload each file to its seller panel.
-
-A run takes about 10 seconds, so it costs no AI tokens.
-
-## One-time setup
-
-- Python 3.10+ → `pip install -r requirements.txt`
-- LibreOffice (free) is needed **only** for Flipkart's old `.xls` format. On Windows it's found automatically in `C:\Program Files\LibreOffice`.
-
-## How the IDs work
-
-- **SKU = `StyleCode_Size`** (e.g. `bxa245pkblu_3-6_Months`). This is the same pattern already used in Shopify and on all four marketplaces, so one SKU works everywhere.
-- ASIN, Flipkart listing ID, Myntra styleId and the Meesho catalog ID are **assigned by the platforms after upload**. Nothing needs to match beforehand.
-- **Parent Code** (e.g. `bxa245`) groups the colours of one design:
-  - Amazon parent row
-  - Meesho Group ID
-  - Flipkart Group ID
-
-## Files
-
-| File | What it is |
+| Output | What is in it |
 |---|---|
-| `app.py` | The website server: serves the page from `frontend/dist`, `/generate`, `/download`, `/api/info` |
-| `start_website.bat` | Starts the website (rebuilds the page first on a PC with Node.js) |
-| `dev.bat` | Developer mode: page and server rebuild/restart on every save |
-| `publish.bat` | Sends your changes to GitHub; the laptop updates itself on its next start |
-| `make_release.bat` | Makes a zip for the laptop (fallback when GitHub is not used) |
-| `frontend/` | The web page source (Vite, plain JavaScript). See "Changing the website" below |
-| `generate.py` | Main program: reads master → fills 4 templates → writes report |
-| `vocab.py` | Master dropdown values and how each maps to each platform's spelling. **Edit this to add a colour, fabric, etc.** |
-| `master_spec.py` | Master sheet columns and default settings |
-| `build_master.py` | Rebuilds the blank master sheet (run after editing vocab/spec) |
-| `writers.py` | Writes into the original templates without breaking them |
-| `refresh_templates.py` | Run after downloading a newer template from a marketplace |
-| `templates/` | The 4 original marketplace templates (Kids Dresses category) |
-| `config/allowed_values.json` | Every dropdown list read out of those templates |
+| **Meesho** `.xlsx` | Listed under the Silver Kraft brand. Designs grouped as Group 01–30; a new file starts after 30 groups. |
+| **Flipkart** `.xls` | Flipkart's old Excel format, written with LibreOffice. One row per size. |
+| **Myntra** `.xlsx` | One style group per colour and MRP. Article names cut to 40 characters. |
+| **Amazon** `.xlsm` | Amazon's new template. One parent row per design, then one row per size. |
+| **Listing report** `.xlsx` | Every problem, check and automatic correction, one line per product. |
 
-## Adding an option (example: a new fabric)
+**Corrected automatically** (each one is listed after a run under *Fixed automatically*):
 
-1. Add one line to `FABRICS` in `vocab.py`, with the platform spellings taken from the templates.
-2. Run `python vocab.py`. It confirms every value exists in each platform's dropdown.
-3. Run `python build_master.py` to refresh the master sheet's dropdowns.
+- Double and stray spaces in titles, descriptions, style codes and image links
+- Prices typed as `Rs. 749` or `₹749`, sizes typed as `6 - 7 years` or `3-6m`
+- Dropdown values typed in the wrong capitals
+- The same colour typed on several rows (merged into one)
+- A secondary colour equal to the primary colour, a shoulder value copied from front length
+- An impossible Meesho kids weight for the size
+- "Wishkaro" in Meesho text (Meesho sells under Silver Kraft)
 
-## Looking after the tool
+---
 
-There are two copies:
+## Daily use
 
-| | Your PC (developer) | Office laptop (listing person) |
+1. Double-click **`start_website`** (desktop shortcut). Keep the black window open while working.
+2. The tool opens at **http://localhost:5050**. A green **Connected** dot means it is ready.
+3. Drag the filled master sheet onto **New run** and click **Generate files**.
+4. About a minute later the zip downloads. The screen shows one of:
+
+| Result | What to do |
+|---|---|
+| 🟢 **Ready to upload** | Upload each file in its seller panel. |
+| 🟡 **Review** | Read the points, then upload. |
+| 🔴 **Must fix** | Correct those rows in the master sheet and generate again. |
+
+The **Help** button in the tool explains every rule. Files stay downloadable for 2 hours.
+
+<details>
+<summary>Without the website (command line)</summary>
+
+Drag the filled master sheet onto **`generate_listings.bat`**. The files appear next to the sheet in `Listing_Output\`.
+
+Or from a command prompt in the tool folder (files go to `output\`, or to a folder you name):
+
+```bat
+python generate.py "C:\path\to\filled_master.xlsx" [output_folder]
+```
+
+</details>
+
+---
+
+## Setting up a laptop (one time)
+
+| Install | Why | Notes |
 |---|---|---|
-| Needs | Python, Node.js, LibreOffice | Python, LibreOffice. **No** Node.js |
-| Start it with | `dev.bat` while you change things, or `start_website.bat` | `start_website.bat` |
+| [Python 3.10+](https://www.python.org/downloads/) | Runs the tool | Tick **Add python.exe to PATH** in the installer |
+| [LibreOffice](https://www.libreoffice.org/download/) | Writes the Flipkart `.xls` | Default options |
+| [Git](https://git-scm.com/downloads/win) | Gets updates from GitHub | Default options |
+
+Then open **Command Prompt** and run:
+
+```bat
+git clone https://github.com/Agnik47/WKlister.git C:\WishkaroListingTool
+```
+
+A GitHub sign-in window opens once (the repository is private; the account needs to be invited
+under **Settings → Collaborators**). Finally open `C:\WishkaroListingTool`, double-click
+**`start_website.bat`** (the first start installs the Python packages, about a minute) and create a
+desktop shortcut to it.
+
+---
+
+## How updates reach the laptop
+
+```mermaid
+flowchart LR
+    D["Developer PC<br/>change the code"] -- "publish.bat" --> G[("GitHub<br/>Agnik47/WKlister")]
+    G -- "start_website.bat<br/>checks on every start" --> L["Office laptop"]
+```
+
+- **Publish:** on the developer PC, double-click **`publish.bat`** and type what changed. It builds the page, commits and pushes.
+- **Receive:** the laptop runs `git pull` every time `start_website.bat` starts. No internet? It starts the version it already has.
+- **Undo a bad version:** run `git revert HEAD` on the developer PC, then `publish.bat`.
+
+<details>
+<summary>Without GitHub (zip fallback)</summary>
+
+1. On the developer PC run **`make_release.bat`**. It creates `releases\Wishkaro_Listing_Tool_<date>.zip` (about 3.5 MB).
+2. On the laptop close the black window, right-click the zip → **Extract All** → `C:\WishkaroListingTool` → replace files.
+3. Start `start_website.bat` again.
+
+</details>
+
+---
+
+## The master sheet
+
+Download it empty from the tool (**Blank master sheet**) or use `Wishkaro_Master_Listing.xlsx`.
+
+| Sheet | One row per | Holds |
+|---|---|---|
+| **Products** | colour | Title, description, bullets, colour, fabric, shape, neck, sleeves, prices, image links |
+| **Sizes** | size | Stock, measurements (inches), package size (cm) and weight (g), optional price per size |
+| **Settings** | — | Brands, addresses, row limits and marketplace defaults. Filled once. |
+
+**How products are joined**
+
+| Field | Example | Used for |
+|---|---|---|
+| **Style Code** | `bxa245pkblu` | One per colour |
+| **Parent Code** | `bxa245` | Joins the colours of one design: Amazon parent row, Meesho and Flipkart Group ID |
+| **SKU** | `bxa245pkblu_3-6_Months` | Style Code + size. The same SKU on every marketplace |
+
+Leave a marketplace's price and MRP empty and that product is left out of that marketplace's file.
+ASINs, Flipkart listing IDs, Myntra style IDs and Meesho catalog IDs are assigned by the marketplaces after upload.
+
+---
+
+## Marketplace rules
+
+<details>
+<summary><b>Sizes and age groups</b></summary>
+
+| Master | Flipkart | Myntra | Amazon |
+|---|---|---|---|
+| `3-6 Months` | `3 - 6 Months` | `3-6M` | `3 Months` → `6 Months` |
+| `1-2 Years` | `1 - 2 Years` | `1-2Y` | `12 Months` → `24 Months` |
+| `5-6 Years` | `5 - 6 Years` | `5-6Y` | `5 Years` → `6 Years` |
+
+Sizes up to `1-2 Years` are listed as **baby girls** (Amazon department `baby-girls`, age range Baby; Flipkart Ideal For Baby Girls). Larger sizes are **girls**.
+
+</details>
+
+<details>
+<summary><b>Meesho</b></summary>
+
+- Brand is **Silver Kraft**; "Wishkaro" in titles and descriptions is replaced.
+- HSN: Meesho's list has no `62041200`, so the closest allowed code (`6204`) is used.
+- Wrong/Defective returns price = Meesho price − ₹20 (Settings).
+- Up to 87 rows and Group 01–30 per file. Files are split automatically, never in the middle of a design.
+- Meesho accepts only image links from its own uploader: use the **Meesho Image** columns.
+
+</details>
+
+<details>
+<summary><b>Flipkart</b></summary>
+
+- Written into Flipkart's own `.xls` through LibreOffice, so its macros and lists are kept.
+- Delivery charges, procurement type and SLA come from Settings.
+
+</details>
+
+<details>
+<summary><b>Myntra</b></summary>
+
+- `styleGroupId`: one number per colour and MRP, as Myntra requires.
+- `vendorArticleName`: cut to 40 characters at a word boundary (or use **Myntra Short Name**).
+- Up to 300 rows per file.
+
+</details>
+
+<details>
+<summary><b>Amazon</b> (new template)</summary>
+
+- Amazon's newer template: labels in row 4, column keys in row 5, Amazon's example in row 6, data from row 7.
+- Columns are matched by their row-5 key, so Amazon can reorder columns without breaking the tool.
+- One **Parent** row per design (title = the words all its colours share), then one **Child** row per size.
+- Package length and width = item size + 1 cm (Settings).
+- Lowest allowed price = Amazon price − ₹10; highest = highest price of the design + ₹100, never above MRP (Settings).
+- Browse nodes, special features, occasions, holidays, life events and seasons come from Settings. Only values in Amazon's own dropdowns are written; anything else is reported and skipped.
+
+</details>
+
+---
+
+## For the developer
+
+**Two machines**
+
+| | Developer PC | Office laptop |
+|---|---|---|
+| Needs | Python, LibreOffice, Git, **Node.js** | Python, LibreOffice, Git |
+| Start with | `dev.bat` while changing code | `start_website.bat` |
 | Address | http://localhost:5050 | http://localhost:5050 |
 
-### While you change code (your PC)
+**`dev.bat`** opens two windows; keep both open. Saving a file in `frontend/src` rebuilds the page in
+about 2 seconds (refresh the browser); saving a `.py` file restarts the server.
 
-Double-click **`dev.bat`**. It opens two windows; keep both open.
-- Save a file in `frontend/src` → the page rebuilds in about 2 seconds. Refresh the browser.
-- Save a `.py` file → the server restarts by itself.
+**How a run works**
 
-`start_website.bat` also rebuilds the page every time it starts on a PC that has Node.js, so the page is never out of date.
+1. `generate.py` reads the master (`Products`, `Sizes`, `Settings`), auto-corrects values and checks required fields.
+2. One builder per marketplace turns each product and size into that marketplace's columns, translating values through `vocab.py`.
+3. Every value is checked against the dropdown lists read from the templates (`config/allowed_values.json`).
+4. `writers.py` writes the rows into the original template by editing the sheet XML directly (Flipkart `.xls` through LibreOffice), so nothing in the template is lost.
 
-### Sending a new version to the office laptop (GitHub, the normal way)
+**Project layout**
 
-1. On your PC, double-click **`publish.bat`** and type a few words about what you changed.
-   It builds the page, saves the change and sends it to GitHub.
-2. That's all. The laptop downloads it the next time `start_website.bat` is opened there.
-   No internet on the laptop? It simply starts the version it already has.
-
-The first time, `publish.bat` asks for the address of your private GitHub repository
-(create an empty one at github.com/new) and a GitHub sign-in window opens once.
-
-To undo a bad version: on your PC run `git revert HEAD`, then `publish.bat` again.
-
-### Without GitHub (zip, as a fallback)
-
-1. On your PC, double-click **`make_release.bat`**. It builds the page and makes
-   `releases\Wishkaro_Listing_Tool_<date>.zip` (about 3.5 MB, only what the laptop needs).
-2. Copy the zip to the office laptop (pen drive, WhatsApp to self, Google Drive).
-3. On the laptop: close the black "Wish Karo Listing Tool" window.
-4. Right-click the zip → **Extract All** → pick the tool folder (always the same one, e.g. `C:\WishkaroListingTool`) → tick **replace files**.
-5. Double-click `start_website.bat`. If `requirements.txt` changed, it installs the new parts by itself.
-
-Keep the last two zips in `releases\`. If a new version has a problem, extract the previous zip the same way to go back.
-
-Nothing on the laptop is lost when you update: the listing person's work lives in their master sheets, which are outside the tool folder, and generated files are temporary.
-
-### Things to check now and then
-
-- **A marketplace changes its template:** download the new one, replace the file in `templates\` on your PC, run `python refresh_templates.py`, fix anything it reports, then send a new release.
-- **New colour, fabric, etc.:** edit `vocab.py`, run `python vocab.py`, then `python build_master.py`, then send a new release (it includes the new blank master sheet).
-- **"Not connected" on the page:** the black window was closed. Start `start_website.bat` again.
-- **Flipkart file missing:** LibreOffice is not installed on that PC.
-
-### Changing the page by hand (command line)
-
+```text
+├── app.py                  website server (port 5050): page, /generate, /download, /api/info
+├── generate.py             reads the master, builds every marketplace file and the report
+├── vocab.py                master dropdown values → each marketplace's spelling
+├── master_spec.py          master sheet columns and default settings
+├── writers.py              writes into the original templates without breaking them
+├── build_master.py         rebuilds the blank master sheet
+├── refresh_templates.py    re-reads dropdown lists after a template update
+├── templates/              the four marketplace templates (kids dresses)
+├── config/                 allowed_values.json: every dropdown list from the templates
+├── frontend/
+│   ├── src/
+│   │   ├── api/            calls to app.py
+│   │   ├── state/          app state, actions, browser storage
+│   │   ├── components/     header/  sidebar/  output/
+│   │   ├── lib/            DOM, formatting and issue-grouping helpers
+│   │   ├── data/           what each marketplace file is
+│   │   └── styles/         colours, fonts, controls, layout
+│   └── dist/               built page (committed: the laptop has no Node.js)
+├── start_website.bat       update, install, rebuild page (if Node.js), start
+├── dev.bat                 auto-rebuild on save
+├── publish.bat             build, commit and push to GitHub
+├── make_release.bat        zip for the laptop (fallback)
+└── generate_listings.bat   drag-and-drop generation without the website
 ```
+
+<details>
+<summary>Frontend commands</summary>
+
+```bat
 cd frontend
-npm install          (once)
-npm run watch        -> rebuilds frontend/dist on every save (what dev.bat uses)
-npm run dev          -> http://localhost:5173 with live reload; keep python app.py running on port 5050
-npm run build        -> one-off build into frontend/dist
+npm install        :: once
+npm run watch      :: rebuild frontend/dist on every save (used by dev.bat)
+npm run dev        :: http://localhost:5173 with live reload; keep python app.py running
+npm run build      :: one-off build
 ```
 
-```
-frontend/
-  index.html            page shell
-  src/main.js           puts the page together
-  src/api/client.js     calls to app.py
-  src/state/            app state, actions (generate, open a run), browser storage
-  src/components/       header/, sidebar/ (upload, checklist, recent runs), output/ (results, files, issues)
-  src/lib/              small helpers (DOM, formatting, grouping issues)
-  src/data/platforms.js what each marketplace file is
-  src/styles/           colours, fonts, buttons, layout
-```
+The page only displays results; how files are generated lives entirely in the Python files.
 
-The page never changes how files are generated; that is all in the Python files.
+</details>
 
-## When a marketplace changes its template
+---
 
-1. Download the new template and replace the file in `templates/`, keeping the same name.
-2. Run `python refresh_templates.py`. It re-reads all dropdowns and reports any mapping that broke.
+## Common changes
 
-## Built-in rules (taken from your existing files)
+**A marketplace sends a new template**
 
-**Sizes**
-- Master size: `3-6 Months`.
-- Flipkart: `3 - 6 Months`.
-- Myntra: `3-6M` / `1-2Y`.
-- Amazon: size range `3 Months` → `6 Months` (`1-2 Years` = `12 Months` → `24 Months`).
+1. Replace the file in `templates\`, keeping the same name.
+2. Run `python refresh_templates.py`. It re-reads every dropdown and lists any mapping that broke.
+3. Fix those lines in `vocab.py`, then `publish.bat`.
 
-**Baby vs girls**
-- Sizes up to 1-2 Years are "Baby": Amazon age range Baby / department Baby Girls, Flipkart Ideal For Baby Girls.
-- Larger sizes use Kid / Girls.
+**A new colour, fabric or other option**
 
-**Amazon** (Amazon's newer template: labels in row 4, column keys in row 5, Amazon's example in row 6, data from row 7)
-- Columns are matched by the row-5 key, so Amazon can move columns around without breaking the tool.
-- One Parent row per design (title = the words all its colours share), then one Child row per size.
-- Package length and width = item size + 1 cm. You can change this in Settings.
-- Lowest / highest allowed price = Amazon price − 10 / highest price of the design + 100 (never above MRP). Settings.
-- Browse nodes, special features, occasions, holidays, life events and seasons come from Settings. Only values in Amazon's own dropdown are used; anything else is reported and skipped.
-- The old flat-file template is kept in `templates/old/`.
+1. Add one line to the right list in `vocab.py`, with each marketplace's spelling.
+2. Run `python vocab.py` to confirm every spelling exists in each marketplace's dropdown.
+3. Run `python build_master.py` to refresh the blank master sheet, then `publish.bat`.
 
-**Myntra**
-- `styleGroupId`: one number per colour + MRP, as Myntra's instructions require.
-- `vendorArticleName`: cut to 40 characters.
+---
 
-**Meesho**
-- HSN: Meesho's dropdown has no 8-digit `62041200`, so the tool uses the closest allowed code (`6204`).
-- Wrong/Defective returns price = Meesho price minus ₹20. You can change this in Settings.
-- Meesho allows Group 01–30 per file. The tool splits files automatically and never splits a design across files.
+## Troubleshooting
 
-**Row limits per file** (change in Settings)
-- Meesho 87, Myntra 300. These match each template's dropdown range.
+| You see | Cause | Fix |
+|---|---|---|
+| **Not connected** / "Could not reach the tool" | The black window was closed | Start `start_website.bat` again |
+| No Flipkart file | LibreOffice is not installed | Install LibreOffice and generate again |
+| "Not the master sheet" / missing `Products` sheet | A different Excel file was uploaded | Upload the filled Wish Karo master sheet |
+| A download does nothing | Files are deleted 2 hours after a run | Generate again |
+| Page says **Not Found** on port 5000 | Old address | The tool runs on **port 5050** |
+| "Could not update right now" when starting | No internet or GitHub unreachable | Nothing to do; the current version starts |
 
-## Tested against your hand-made files
+---
 
-Real products were taken from the existing Meesho, Flipkart, Myntra and Amazon files, rebuilt as master rows, and generated again:
+## Accuracy
 
-| Platform | Filled cells identical to the hand-made file |
+Products from the team's own hand-made files were rebuilt as master rows and generated again.
+
+| Marketplace | Filled cells identical to the hand-made file |
 |---|---|
 | Flipkart | 1200 / 1200 (100%) |
-| Amazon | 812 / 836 (97%) |
 | Meesho | 496 / 512 (97%) |
 | Myntra | 378 / 399 (95%) |
+| Amazon (new template) | 3233 / 3709 (87%) |
 
-Every difference is deliberate:
-- Dates.
-- Group numbering.
-- Fields the tool now fills that were left blank.
-- Two mistakes in the hand-made files:
-  - Amazon `standard_price` 799 vs `sale_price` 899 on the same SKU.
-  - Myntra light-green rows marked as Burgundy.
+Every difference is deliberate: dates and group numbers, fields the tool fills that were left blank,
+double spaces removed, and values in the hand-made files that are not in the marketplace's dropdown
+(for example Amazon occasions such as "Party , Celebrations"), which the marketplace would reject.
+
+---
 
 ## Known limits
 
-- **Category:** Kids Dresses/Frocks only. That is what the 4 templates are for. Adding a category means adding its template plus a vocab section.
-- **Flipkart:** the "Fast Validate" button's progress pop-up is lost when LibreOffice saves the `.xls`. The macro code and all data are kept. Test the first upload.
-- **Meesho images:** Meesho rejects non-Meesho image links. Use the **Meesho Image** columns with links from Meesho's image uploader.
-- **Unmapped options:** if a platform has no equivalent for an option (e.g. Meesho has no Velvet), that cell is left blank and the report says so.
+- **Category:** kids dresses and frocks only, because that is what the four templates are for. A new category needs its templates plus a section in `vocab.py`.
+- **Flipkart:** the "Fast Validate" progress pop-up is lost when LibreOffice saves the `.xls`; macros and data are kept.
+- **Options a marketplace does not have** (for example Meesho has no Velvet) are left blank and reported, so they can be picked by hand.
+- **One user at a time:** runs are processed one after another (LibreOffice limitation), which is fine for one listing person.

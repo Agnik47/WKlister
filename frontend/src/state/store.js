@@ -5,6 +5,8 @@ import { loadRuns, loadPref } from './storage.js';
  * phase: 'idle'    nothing running, show the selected run or the empty state
  *        'running' waiting for /generate
  */
+const savedRuns = loadRuns();
+
 let state = {
   connected: null, // null = checking, true/false after /api/info
   info: null,
@@ -14,8 +16,9 @@ let state = {
   runningFile: null,
   startedAt: null,
   runError: null,
-  runs: loadRuns(),
-  activeRunId: null,
+  runs: savedRuns,
+  activeRunId: savedRuns[0]?.id ?? null, // after a refresh, show the latest run again
+
   autoDownload: loadPref('autoDownload', true),
 };
 
