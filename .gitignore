@@ -1,17 +1,20 @@
+# Patterns starting with / only match at the top of the project
+# (a bare "output/" would also hide frontend/src/components/output/).
+
 # developer-only
-frontend/node_modules/
+/frontend/node_modules/
 __pycache__/
 *.pyc
-.claude/
+/.claude/
 
 # made on each PC, never shared
-.installed
-.installed_requirements
-releases/
-test_output/
-output/
-Listing_Output/
-templates/old/
+/.installed
+/.installed_requirements
+/releases/
+/test_output/
+/output/
+/Listing_Output/
+/templates/old/
 
 # Excel lock files while a sheet is open
 ~$*
