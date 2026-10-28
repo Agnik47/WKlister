@@ -64,7 +64,8 @@ A run takes about 10 seconds, so it costs no AI tokens.
 | `app.py` | The website server: serves the page from `frontend/dist`, `/generate`, `/download`, `/api/info` |
 | `start_website.bat` | Starts the website (rebuilds the page first on a PC with Node.js) |
 | `dev.bat` | Developer mode: page and server rebuild/restart on every save |
-| `make_release.bat` | Makes the zip to copy to the office laptop |
+| `publish.bat` | Sends your changes to GitHub; the laptop updates itself on its next start |
+| `make_release.bat` | Makes a zip for the laptop (fallback when GitHub is not used) |
 | `frontend/` | The web page source (Vite, plain JavaScript). See "Changing the website" below |
 | `generate.py` | Main program: reads master → fills 4 templates → writes report |
 | `vocab.py` | Master dropdown values and how each maps to each platform's spelling. **Edit this to add a colour, fabric, etc.** |
@@ -99,7 +100,19 @@ Double-click **`dev.bat`**. It opens two windows; keep both open.
 
 `start_website.bat` also rebuilds the page every time it starts on a PC that has Node.js, so the page is never out of date.
 
-### Sending a new version to the office laptop
+### Sending a new version to the office laptop (GitHub, the normal way)
+
+1. On your PC, double-click **`publish.bat`** and type a few words about what you changed.
+   It builds the page, saves the change and sends it to GitHub.
+2. That's all. The laptop downloads it the next time `start_website.bat` is opened there.
+   No internet on the laptop? It simply starts the version it already has.
+
+The first time, `publish.bat` asks for the address of your private GitHub repository
+(create an empty one at github.com/new) and a GitHub sign-in window opens once.
+
+To undo a bad version: on your PC run `git revert HEAD`, then `publish.bat` again.
+
+### Without GitHub (zip, as a fallback)
 
 1. On your PC, double-click **`make_release.bat`**. It builds the page and makes
    `releases\Wishkaro_Listing_Tool_<date>.zip` (about 3.5 MB, only what the laptop needs).
