@@ -201,6 +201,8 @@ for _ in range(60):
         time.sleep(0.5)
 desktop = ctx.ServiceManager.createInstanceWithContext("com.sun.star.frame.Desktop", ctx)
 doc = desktop.loadComponentFromURL(uno.systemPathToFileUrl(job["template"]), "_blank", 0, (P("Hidden", True),))
+if doc is None:
+    sys.exit("LibreOffice could not open the Flipkart template. Close any open LibreOffice windows and try again.")
 sh = doc.Sheets.getByName(job["sheet"])
 try:
     sh.unprotect("")
@@ -209,14 +211,20 @@ except Exception:
 cur = sh.createCursor(); cur.gotoEndOfUsedArea(False)
 last_row, last_col = cur.RangeAddress.EndRow, cur.RangeAddress.EndColumn
 d0 = job["data_row"] - 1
-cleared = 0
-for r in range(d0, last_row + 1):
-    for c in range(0, last_col + 1):
-        cell = sh.getCellByPosition(c, r)
-        if cell.getType().value != "EMPTY":
-            cell.setString("")
-            cleared += 1
-print("CLEARED", cleared, last_row, last_col, file=sys.stderr)
+VALUES = 1 | 2 | 4 | 16          # values, dates, text, formulas - cell formats and dropdowns stay
+if last_row >= d0:
+    used = sh.getCellRangeByPosition(0, d0, last_col, last_row)
+    # clear whole blocks of filled cells (a cell-by-cell loop took ~2 min on the Flipkart sheet)
+    for a in used.queryContentCells(VALUES).getRangeAddresses():
+        sh.getCellRangeByPosition(a.StartColumn, a.StartRow, a.EndColumn, a.EndRow).clearContents(VALUES)
+    # the sheet is protected, so a block holding a locked cell is skipped: blank those one by one
+    left = 0
+    for a in used.queryContentCells(VALUES).getRangeAddresses():
+        for r in range(a.StartRow, a.EndRow + 1):
+            for c in range(a.StartColumn, a.EndColumn + 1):
+                sh.getCellByPosition(c, r).setString("")
+                left += 1
+    print("CLEARED", d0, last_row, last_col, "one by one:", left, file=sys.stderr)
 for i, row in enumerate(job["rows"]):
     for col, val in row.items():
         cell = sh.getCellByPosition(int(col) - 1, d0 + i)
@@ -265,10 +273,14 @@ def fill_xls(template, out_path, sheet_name, data_row, rows, port=2083):
     work = tempfile.mkdtemp(prefix="lo_")
     script = os.path.join(work, "uno_fill.py")
     job = os.path.join(work, "job.json")
+    # LibreOffice opens a copy: if it crashes, its lock file is left here, not in templates/
+    # (a stale templates/.~lock file makes every later Flipkart run fail)
+    tpl_copy = os.path.join(work, os.path.basename(template))
+    shutil.copyfile(template, tpl_copy)
     with open(script, "w", encoding="utf-8") as fh:
         fh.write(_UNO_SCRIPT)
     with open(job, "w", encoding="utf-8") as fh:
-        json.dump({"template": os.path.abspath(template), "out": os.path.abspath(out_path),
+        json.dump({"template": tpl_copy, "out": os.path.abspath(out_path),
                    "sheet": sheet_name, "data_row": data_row, "port": port,
                    "rows": [{str(k): v for k, v in r.items() if v not in (None, "")} for r in rows]}, fh)
     profile = Path(work, "profile").as_uri()

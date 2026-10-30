@@ -69,8 +69,9 @@ def _clean(v):
 NUMERIC_KEYS = {"meesho_price", "meesho_mrp", "flipkart_price", "flipkart_mrp", "myntra_price", "myntra_mrp",
                 "amazon_price", "amazon_mrp", "stock", "chest", "front_length", "bust", "waist", "hips",
                 "shoulder", "pkg_l", "pkg_w", "pkg_h", "weight_g"}
-NO_SPACE_KEYS = {"style_code", "parent_code", "sku", "hsn", "img_front", "img_back", "img_side", "img_detail",
-                 "img_look", "img6", "img7", "img8", "meesho_img1", "meesho_img2", "meesho_img3", "meesho_img4"}
+IMG_KEYS = {"img_front", "img_back", "img_side", "img_detail", "img_look", "img6", "img7", "img8",
+            "meesho_img1", "meesho_img2", "meesho_img3", "meesho_img4"}
+NO_SPACE_KEYS = {"style_code", "parent_code", "sku", "hsn"}
 
 
 def _norm_size(v):
@@ -89,7 +90,9 @@ def auto_fix(key, v, col):
         return None
     if isinstance(v, str):
         v = v.replace("\u00a0", " ").replace("\u200b", "")
-        if key in NO_SPACE_KEYS:
+        if key in IMG_KEYS:
+            v = re.sub(r"\s+", "%20", v.strip())             # a space inside a link is part of the file name
+        elif key in NO_SPACE_KEYS:
             v = re.sub(r"\s+", "", v)
         elif key == "description":
             v = "\n".join(re.sub(r"[ \t]+", " ", line).strip() for line in v.splitlines()).strip()
@@ -100,9 +103,10 @@ def auto_fix(key, v, col):
         if v == "":
             return None
     if key in NUMERIC_KEYS and isinstance(v, str):
+        kilos = key == "weight_g" and re.search(r"(?i)\d\s*kgs?$", v)    # "0.3 kg" in the grams column
         t = re.sub(r"(?i)rs\.?|inr|₹|,|cm|kg|g|inches|inch|in|\"", "", v).strip()
         try:
-            f = float(t)
+            f = round(float(t) * 1000, 1) if kilos else float(t)
             v = int(f) if f.is_integer() else f
         except ValueError:
             pass
@@ -188,6 +192,14 @@ def load_master(path, rep):
             continue
         rep.info("master", "", "", header,
                  f"Auto-fixed {sheet} row {r}: '{str(raw)[:60]}' -> '{str(fixed)[:60]}'")
+    headers = {c["key"]: c["header"] for _, cols in S.PRODUCT_GROUPS + S.SIZE_GROUPS for c in cols}
+    for sheet, rows in (("Products", products), ("Sizes", sizes)):
+        for row in rows:
+            for k in NUMERIC_KEYS:
+                if isinstance(row.get(k), str) and not str(row.get("style_code") or "").upper().startswith("EXAMPLE"):
+                    rep.err("master", row.get("style_code"), "", headers[k],
+                            f"{sheet} row {row['_row']}: '{row[k]}' is not a number - left blank")
+                    row[k] = None
     per_ch, general, size_tbl = read_settings(wb["Settings"])
 
     defaults = {c["key"]: c["default"] for _, cols in S.PRODUCT_GROUPS for c in cols if c["default"] is not None}
@@ -222,11 +234,16 @@ def load_master(path, rep):
         prods[sc] = p
 
     seen_sku = {}
+    by_lower = {k.lower(): k for k in prods}
     for z in sizes:
         sc = z.get("style_code")
         if not sc or str(sc).upper().startswith("EXAMPLE"):
             continue
         sc = str(sc)
+        if sc not in prods and sc.lower() in by_lower:          # 'TST100BLU' typed for 'tst100blu'
+            rep.info("master", by_lower[sc.lower()], "", "Style Code",
+                     f"Auto-fixed Sizes row {z['_row']}: '{sc}' -> '{by_lower[sc.lower()]}'")
+            sc = z["style_code"] = by_lower[sc.lower()]
         if sc not in prods:
             rep.err("master", sc, "", "Style Code", f"Sizes row {z['_row']}: Style Code not found in Products sheet")
             continue
@@ -278,6 +295,10 @@ def sanity_checks(sc, p, per_ch, rep):
     if zero:
         rep.warn("master", sc, "", "Stock", f"Stock is 0 for {', '.join(zero)} - these will list as out of stock")
     for z in p["sizes"]:
+        wt = num(z.get("weight_g"))
+        if isinstance(wt, (int, float)) and 0 < wt < 30:
+            rep.warn("master", sc, z["sku"], "Weight (g)",
+                     f"Weight is {wt} g - too light for a dress. Type it in grams (0.3 kg = 300)")
         sh, fl = z.get("shoulder"), z.get("front_length")
         if sh not in (None, "") and fl not in (None, "") and num(sh) == num(fl):
             z["shoulder"] = None
@@ -623,19 +644,28 @@ def parent_title(titles):
     return " ".join(w for w, k in zip(first, keep) if k) or titles[0]
 
 
-def amz_date(v):
+def amz_date(v, rep, label):
     if v in (None, ""):
         return None
-    return v.date() if isinstance(v, dt.datetime) else dt.date.fromisoformat(str(v))
+    if isinstance(v, dt.datetime):
+        return v.date()
+    for fmt in ("%Y-%m-%d", "%d-%m-%Y", "%d/%m/%Y", "%d.%m.%Y"):
+        try:
+            return dt.datetime.strptime(str(v).strip(), fmt).date()
+        except ValueError:
+            pass
+    rep.err("amazon", "", "", label, f"'{v}' is not a date - sale dates left blank. Type it as YYYY-MM-DD")
+    return None
 
 
 def build_amazon(prods, per_ch, gen, size_tbl, rep):
     ch = "amazon"
     rows = []
     G = lambda label: gen.get(label, S.GENERAL_DEFAULTS.get(label))
-    start, end = amz_date(G("Amazon Sale Start Date")), amz_date(G("Amazon Sale End Date"))
+    start = amz_date(G("Amazon Sale Start Date"), rep, "Amazon Sale Start Date")
+    end = amz_date(G("Amazon Sale End Date"), rep, "Amazon Sale End Date")
     if start and not end:
-        end = start.replace(year=start.year + 2)
+        end = start.replace(year=start.year + 2, day=min(start.day, 28) if start.month == 2 else start.day)
     pad = num(G("Amazon Package Padding (cm)")) or 0
     min_gap, max_gap = num(G("Amazon Min Price Gap (Rs)")), num(G("Amazon Max Price Gap (Rs)"))
     brand_in = per_ch["Brand"][ch]
@@ -1005,8 +1035,12 @@ def run(master, out_dir):
             continue
         heads, compulsory = template_headers(ch)
         check_rows(ch, rows, heads, compulsory, rep)
-        max_rows = int(per_ch.get("Max Rows per File", {}).get(ch) or 10**6)
-        parts = chunk(rows, max_rows, 30 if ch == "meesho" else None)
+        max_rows = num(per_ch.get("Max Rows per File", {}).get(ch))
+        if not isinstance(max_rows, (int, float)) or max_rows < 1:
+            if max_rows not in (None, ""):
+                rep.err(ch, "", "", "Max Rows per File", f"'{max_rows}' is not a number - wrote one file")
+            max_rows = 10**6
+        parts = chunk(rows, int(max_rows), 30 if ch == "meesho" else None)
         files = []
         for i, part in enumerate(parts, start=1):
             if ch == "meesho":
